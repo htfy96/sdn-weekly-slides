@@ -1,0 +1,110 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{minted}
+
+\usetheme{metropolis}
+
+
+\title{Proportional Bandwidth Sharing Using Bayesian
+Inference in SDN-based Data Centers }
+\author{Zheng Luo}
+
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Quick look}
+    This article:
+    
+    \begin{itemize}
+        \item \emph{targets} delivering rates proportional to weights of subscribed flows on TCP/IP stack. ($r_i \propto w_i$)
+        \item \emph{by} probabilistically dropping L2 packets
+        \item \emph{where} dropping rate of $flow_i$ is determined by:
+            \begin{itemize}
+                \item the weight (given as input by a tenant) ($w_i$)
+                \item current system load $l$
+                \item its contribution to the system load [posterior probability] ($p(flow_i|l)$)
+                    \begin{itemize}
+                        \item How to compute $p(flow_i|l)$?
+                    \end{itemize}
+            \end{itemize}
+            
+            \begin{equation}
+                Drop_f \propto \frac{p(flow_i|l)}{w_i}
+            \end{equation}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Predicting $p(flow_i|l)$}
+    By Bayes’ theorem:
+    
+    \begin{equation}
+        p(f |l) \propto p(l|f)p(f)
+    \end{equation}
+    
+    \begin{description}
+        \item[$p(f)$] By sampling packets: $p(f) = packets_f / packets_{all}$ 
+            \begin{itemize}
+                \item Smoothing: $p(f) = \alpha p(f) + (1 - \alpha)e( f )$
+            \end{itemize}
+        \item[$p(l|f)$]: Assume normal distribution$N(\mu, \sigma)$. At each sampling, $l$ is known, so $\mu, \sigma$ could be updated
+    \end{description}
+    
+    
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Algorithm}
+    \small
+    \begin{minted}{python}
+    buffer = []
+    When packet incomes:
+        if current_load > sampling_threshold: # Sampling
+            if rand_with_prob(sampling_rate):
+                buffer.append(packet)
+            if buffer.full():
+                for packet_in_buf in buffer:
+                    update(p_f, packet_in_buf.flow)
+                    update(p_l_given_f, packet_in_buf.flow, \
+                        current_load)
+                buffer.clear()
+        if current_load > drop_threshold: # Dropping
+            drop_rate = compute(p_f, p_l_given_f, packet.flow, \
+                current_load)
+            if rand_with_prob(drop_rate):
+                drop(packet)
+    \end{minted}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Performance Study}
+    Link capacity = 100Mbps, TCP
+    \begin{figure}
+        \centering
+        \includegraphics[scale=.3]{table_flow_inc.png}
+    \end{figure}
+    \begin{figure}
+        \centering
+        \includegraphics[scale=.3]{throughput.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}[standout]
+Thanks for listening
+
+\begin{scriptsize}
+Proportional Bandwidth Sharing Using Bayesian Inference in SDN-based Data Centers,
+Purnima Murali Mohan, Dinil Mon Divakaran, Mohan Gurusam, IEEE ICC 2016 - Next-Generation Networking and Internet Symposium
+    
+\end{scriptsize}
+\end{frame}
+
+\end{document}

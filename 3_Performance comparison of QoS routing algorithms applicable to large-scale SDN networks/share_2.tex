@@ -1,0 +1,186 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{minted}
+\usepackage{multicol}
+
+\usetheme{metropolis}
+
+
+\title{Performance comparison of QoS routing algorithms
+applicable to large-scale SDN networks }
+\author{Zheng Luo}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Contents}
+\begin{multicols}{2}
+        \tableofcontents
+\end{multicols}
+
+\end{frame}
+
+
+\begin{frame} {Quick look}   
+This article:
+\begin{itemize}
+    \item summarized traditional QoS Architecture,
+    \item analyzed algorithms with
+            \begin{itemize}
+                \item bandwidth guarantees
+                \item bandwidth-delay constraint
+            \end{itemize}
+        measured by
+            \begin{itemize}
+                \item bandwidth rejection ratio(BRR)
+                \item route length
+            \end{itemize}
+\end{itemize} 
+\end{frame}
+
+\section{Traditional QoS Architecture}
+\begin{frame}{Traditional QoS Architecture}
+Two main QoS Architectures today:
+\begin{description}
+    \item[IntServ] involves prior reservation of resources before sending, per-flow state
+    \item[DiffServ] Mark the packets with priority at the border of network, no prior reservation, per-class state
+\end{description}
+\end{frame}
+
+\section{Bandwidth-constrained routing algorithm}
+
+\subsection{MHA: Minimum Hop Algorithm}
+\begin{frame}{MHA: Minimum Hop Algorithm}
+
+\begin{figure}
+    \includegraphics[scale=.4]{raw.png}
+    \caption{Current network}
+\end{figure}
+    
+\end{frame}
+
+\begin{frame}{MHA: Minimum Hop Algorithm}
+    Consider a flow requiring 10 bandwidth:
+    \begin{figure}
+    \includegraphics[scale=.4]{mha.png}
+    \caption{MHA Algorithm}
+\end{figure}
+Remove edge that cannot satisfy bandwidth requirement, then choose path with minimum hop
+\end{frame}
+
+\subsection{WSP: Widest shortest path}
+\begin{frame}{WSP: Widest shortest path}
+    \begin{figure}
+    \includegraphics[scale=.4]{wsp.png}
+    \caption{WSP Algorithm}
+    \end{figure}
+    Choose K-shortest paths, then select the one with the highest available bandwidth.
+    
+    Similar algorithm: SWP(Shortest widest path)
+\end{frame}
+
+\subsection{MIRA: Minimum interference Routing Algorithm}
+\begin{frame}{MIRA: Minimum interference Routing Algorithm}
+    Given \emph{multiple} Source-Destination pairs, how to route to satisfy as many pairs as possible?
+
+Unfortunately this is a NP problem. Therefore, heuristics are used:
+
+\begin{itemize}
+    \item \emph{Critical path}
+     whenever their capacity is reduced by 1 bandwidth-unit, the maxflow value of one or more the other SD pairs also reduces by 1 bandwidth-unit.
+    \item Find the least critical feasible path
+\end{itemize}
+
+\end{frame}
+
+\subsection{DORA: Dynamic Online Routing Algorithm}
+\begin{frame}{DORA: Dynamic Online Routing Algorithm}
+    \begin{description}
+        \item[Offline Phase] PPV(Path potential values) for each link is calculated for each SD pair. 
+            \begin{enumerate}
+                \item Calculate the shortest disjoint paths($SDP_i$) of each SD pair $i$.
+                \item For each SD pair($i$) and link $l$, $PPV_{i, l} = \sum_{j \neq i}{\mathsf{1}_{l \in SDP_j}} - \mathsf{1}_{l \in SDP_i} $
+            \end{enumerate}
+        \item[Online Phase] BWP(BandWidth Proportion)
+        \begin{equation}
+            weight_l = (1 - BWP) PPV + BWP \frac{1}{residual\_bandwidth}
+        \end{equation}
+        
+        Then use Dijkstra algorithm to compute weight-optimized feasible path.
+    \end{description}
+\end{frame}
+
+\subsection{Benchmark}
+\begin{frame}{Benchmark: BRR}
+    \begin{figure}
+        \includegraphics[scale=.2]{bandwidth_benchmark.png}
+        \caption{BRR for different bandwidth constrained algorithms, on toy network proposed in MIRA paper}
+    \end{figure}
+    
+\end{frame}
+
+\begin{frame}{Benchmark: Route length}
+    \begin{figure}
+        \includegraphics[scale=.3]{bandwidth_hop.png}
+        \caption{Average route length for different bandwidth-constrained algorithms, on toy network proposed in MIRA paper}
+    \end{figure}
+    
+\end{frame}
+
+\section{Bandwidth-delay constained algorithms}
+\subsection{MDA: Minimum Delay Algorithm}
+
+\begin{frame}{MDA: Minimum Delay Algorithm}
+Remove all edges unsatisfying bandwidth request, then find path with minimum delay by Dijkstra.
+
+Simple. less efficent.
+    
+\end{frame}
+
+\subsection{MDWCRA: Maximum Delay-Weighted Capacity Routing Algorithm}
+\begin{frame}{MDWCRA: Maximum Delay-Weighted Capacity Routing Algorithm}
+    \begin{itemize}
+        \item Calculate the shortest feasible disjoint path of each SD pair(length: delay)
+        \item Find critial links(bottleneck) set of SD: $C_{sd}$
+        \item \begin{eqnarray}
+            w(link) = \sum_{(s, d): links \in C_{sd}} {\alpha_{sd}}
+        \end{eqnarray}
+        Different weight function$\alpha$:
+            \begin{itemize}
+                \item $\alpha = 1$: number of SD pairs for which the link is critical
+                \item $\alpha = 1 / delay_{s, d}$: critical link on high-delay SD pair should receive more concern
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\subsection{Benchmark}
+
+\begin{frame}{Benchmark: BRR}
+\begin{figure}
+    \includegraphics[scale=.4]{brr.png}
+    \caption{Overall BRR}
+\end{figure}
+    
+\end{frame}
+
+\begin{frame}{Stdev of residual bandwidth}
+    \begin{figure}
+    \includegraphics[scale=.3]{stdev.png}
+    \caption{Standard deviation of residual bandwidth on links}
+\end{figure}
+\end{frame}
+
+\begin{frame}[standout]
+    Thanks for listening
+    
+    \begin{scriptsize}
+Performance comparison of QoS routing algorithms applicable to large-scale SDN networks; Slavica Tomovic, Igor Radusinovic, Neeli Prasad;  EUROCON 2015 - International Conference on Computer as a Tool (EUROCON), IEEE
+
+\end{scriptsize}
+\end{frame}
+\end{document}

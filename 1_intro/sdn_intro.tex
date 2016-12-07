@@ -1,0 +1,259 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{minted}
+
+\usetheme{metropolis}
+
+\title{A quick look at SDN}
+\author{Zheng Luo}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+    \frametitle{Table of contents}
+    \tableofcontents
+\end{frame}
+
+\section{Why SDN}
+
+\begin{frame}
+    \frametitle{Traditional network}
+    \begin{figure}
+        \centering
+        \includegraphics[scale=.3]{previous_net.png}
+        \caption{Traditional network}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Problem 1: Flexibility}
+    \begin{itemize}
+        \item L2 switch forwards by MAC Address Table(target MAC, etc.)
+        \item Router forwards by routing table(target IP, etc.)
+        \item Firewall filters different types of packets with builtin policies
+    \end{itemize}
+    Questions:
+    \begin{itemize}
+        \item Can router restrict the speed of video streaming?
+        \item Can switch perform customlized forwarding policies?
+        \item Can we change the builtin policy of firewall dynamicly?
+    \end{itemize}
+    Answer:
+    
+    Hard. Because they are implemented as hardware. Those come with many functions often have high price.
+\end{frame}
+
+\begin{frame}
+    \frametitle{Problem 2: distributed algorithm/locality}
+    Many distributed algorithms run between neighbors.
+    
+    Pros:
+    \begin{itemize}
+        \item Resilient to network change
+    \end{itemize}
+    
+    Cons(like many other distributed algorithms):
+    \begin{itemize}
+        \item Complexity
+        \item Convergence speed
+        \item Optimality
+    \end{itemize}
+    
+\end{frame}
+
+\begin{frame}
+    \frametitle{Extract the complexity}
+    \begin{itemize}
+        \item 
+            \begin{itemize}
+                \item L2 switch \emph{forwards} by MAC Address Table with \emph{matching}
+                \item and \emph{updates} MAC Address table with its own algorithm
+            \end{itemize}
+        \item
+            \begin{itemize}
+                \item Router \emph{forwards} by routing table \emph{matching}
+                \item and \emph{updates} routing table by routing algorithm
+            \end{itemize}
+        \item 
+            \begin{itemize}
+                \item Firewall \emph{filters}( = forward to no port) by rule \emph{matching}
+                \item and \emph{updates} rule by configuration
+            \end{itemize}
+    \end{itemize}
+    Here we divide the job of network devices into two categories:
+    \begin{description}
+        \item[Data plane] Simple \emph{matching} and \emph{forward}
+        \item[Control plane] Controls the rules that data plane use
+    \end{description}
+    Traditional network couples the two planes together. Thus control plane is distributed and often built with hardware.
+\end{frame}
+
+\begin{frame}
+\frametitle{Initiative}
+        \begin{description}
+        \item[Data plane] Often common among devices.
+        \item[Control plane] Quite different among devices.
+        \end{description}
+        
+        \begin{itemize}
+            \item Make specification about data plane
+            \item Make control plane programmable
+        \end{itemize}
+        
+\end{frame}
+
+\section{What is SDN}
+\begin{frame}
+\frametitle{SDN Architecture}
+    \begin{figure}
+        \includegraphics[scale=.4]{sdn_arch.png}
+        \caption{Architecture of SDN}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{SDN vs traditional network}
+    \begin{tabular}{l|c|c}
+     & \textbf{SDN} & \textbf{traditional network} \\
+    \hline
+    \textbf{Control \& data plane} & Decoupled & Coupled \\
+    \hline
+    \textbf{Control Algorithm} & Centralized & Distributed \\
+    \hline
+    \textbf{Programmability} & Good & Poor \\
+    \hline
+    \textbf{Programming interface} & Open & Private 
+    \end{tabular}
+\end{frame}
+
+\begin{frame}
+    \frametitle{OpenFlow}
+    \begin{figure}
+        \includegraphics[scale=.4]{openflow_arch.png}
+        \caption{Architecture of OpenFlow}
+    \end{figure}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Flow table on Switch(Simplified)}
+\begin{minted}{python}
+When receive packet:
+    while True:
+        flow_table = 0
+        for flow_entry in flow_table with priority desc:
+            if match(packet, flow_entry.match):
+                run(flow_entry.action) 
+                # may modify packet
+                # or send to another table(flow_table=X)
+                # or output, drop, ... and finish
+                update(flow_entry.counter)
+                update(flow_table.counter)
+                break
+        if no flow_entry in flow_table matches:
+            run(flow_table.table_miss_entry) 
+            # Usually send_to_controller/drop/next_table
+    
+\end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Matching}
+    \begin{minted}{python}
+field = extract_from(packet, match.oxm_type)
+if match.oxm_hasmask:
+    field &= match.mask
+return field == match.oxm_value
+    \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Actions}
+\begin{description}
+    \item[Output \texttt{port\_no}] Output to a normal port/in port/all ports/ or send to controller/specific table
+    \item[Group \texttt{group\_id}] Process through group
+    \item[Drop \texttt{}] Drop this packet
+    \item[Set-Queue \texttt{queue\_id}] Send to queue
+    \item[Meter \texttt{meter\_id}] Direct to meters
+    \item[Set-Field \texttt{field\_type} \texttt{value}] Rewrite specific field
+\end{description}
+\end{frame}
+
+\begin{frame}
+\frametitle{Data \& Control Plane messaging}
+Switch can tell controller:
+\begin{itemize}
+    \item Hello(during startup)
+    \item Packet-in(when \texttt{output CONTROLLER})
+    \item Flow-removed
+\end{itemize}
+
+Controller can tell switch:
+\begin{itemize}
+    \item Modify-state
+    \item Read-state
+    \item Send-packet
+\end{itemize}
+
+\begin{small}
+    * Both lists are incomplete
+\end{small}
+
+\end{frame}
+
+\section{How to implement QoS in OpenFlow}
+
+\begin{frame}[fragile]
+    \frametitle{Queues}
+    \begin{quotation}
+        OpenFlow 1.2+ support both minimum and maximum rates for a given queue.
+    \end{quotation}
+    Definition of Queue(OpenvSwitch):
+\begin{minted}{bash}
+ovs-vsctl set port eth0 qos=@newqos -- --id=@newqos \
+ create qos type=linux-htb other-config:max-rate=5000000 \
+ queues:0=@newqueue -- --id=@newqueue create queue \
+ other-config:min-rate=3000000 \
+ other-config:max-rate=3000000
+
+# ---> Queue --[min: 3Mbps, max: 3Mbps]-> linux-htb
+#  --[max: 5Mbps]--> eth0
+\end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Meters}
+    \begin{quotation}
+    Unlike queues, meters could be installed/removed/modified like a flow entry in meter table.
+    
+    Packet could be forwarded to group by \texttt{Meter meter\_id} action
+    \end{quotation}
+\begin{minted}{python}
+When packet comes into meter m with rate r:
+    for band in meter.bands:
+        if r > band.rate:
+            apply(band.type) # Usually DROP
+            band.counter++
+\end{minted}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Collecting information}
+    \begin{itemize}
+        \item Table level
+        \item Flow level
+        \item Port level
+        \item Queue level
+        \item Meter level
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+    Thanks for listening
+\end{frame}
+\end{document}
