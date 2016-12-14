@@ -1,0 +1,136 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{minted}
+\usepackage{multicol}
+\usepackage{amsmath}
+
+\usetheme{metropolis}
+
+
+\title{Bandwidth-Aware Scheduling With SDN in Hadoop:
+A New Trend for Big Data}
+\author{Zheng Luo}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Quick look}
+This article:
+\begin{itemize}
+    \item proposed a scheduling algorithm for Hadoop based on SDN
+        \begin{itemize}
+            \item which takes \emph{link bandwidth} into consideration
+        \end{itemize}
+    \item on the assumption that
+        \begin{itemize}
+            \item nodes are homogenous
+            \item Finish time of task is known
+            \item Bandwidth is known
+        \end{itemize}
+    \item in order to minimize the completion time of the whole job
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Previous works}
+    Most of them(BAR, etc.) assume that:
+    \begin{itemize}
+        \item A job consists of $m$ equivalent tasks
+        \item There are $n$ nodes, of which some are local and some are remote. Each has different current load $L_s^{init}$
+        \item On a local node, a task requires $C_{loc}$ to finish
+        \item $r^\alpha$ remote tasks require $C_{rem}(r^\alpha)$ time to finish, where $C_{rem}(\cdot )$ is a monotone increasing function(network load) ($C_{rem}(r^\alpha) = r^\alpha (C_{loc} + q)$ in its experiment)
+        \item Target:
+            \begin{equation}
+                \begin{split}
+                = \min { \max_{s \in active\_servers}{finish\_time_{s}} } \\
+                = \min { \max_{s \in active\_servers} {L_s^{init} + \sum_{a(t) = s}{C(t)} } }
+                \end{split}
+            \end{equation}
+    \end{itemize}
+\end{frame}
+\begin{frame}{Architecture}
+\begin{figure}
+    \includegraphics[scale=.4]{hadoop_arch.png}
+    \caption{Topology of a Hadoop cluster centrally controlled by SDN}
+\end{figure}
+\end{frame}
+
+\begin{frame}{This paper's model}
+\begin{itemize}
+    \item Time to finish a task $j$ in remote node: $C_{loc} + Size_j / Bandwidth_{src, j}$
+    \item Use time slot method to share link
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Algorithm}
+\footnotesize
+\begin{minted}{ruby}
+tasks.each |task|
+    nd_loc = find_earlist_idle_time_point(local_rack.nodes)
+    nd_all = find_earlist_idel_time_point(all.nodes)
+    if nd_loc == nd_all
+        assign(task, nd_loc)
+    else
+        delta = nd_loc.idle_point - nd_all.idle_point
+        if possible_to_allocate_slots(source, nd_all,
+            nd_all.idle_point,
+            task.size, delta)
+            allocate_time_slots(
+                source, nd_all, nd_all.idle_point
+            )
+            assign(task, nd_all)
+        else
+            assign(task, nd_loc)
+        end
+    end
+end
+\end{minted}
+\end{frame}
+
+\begin{frame}{Experiment}
+\begin{figure}
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+    \includegraphics[scale=.18]{hadoop_completion_time.png}
+    \caption{Job completion time for both wordcount and sort jobs}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+ \includegraphics[scale=.2]{hadoop_arch.png}
+ \caption{Topology of a Hadoop cluster centrally controlled by SDN}
+\end{minipage}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Drawbacks}
+    \begin{itemize}
+        \item Always utilizing full residue bandwidth may not be optimal
+            \begin{itemize}
+                \item Use SDN Queue to limit rate? (described in analysis)
+            \end{itemize}
+        \item Local optimal != global optimal
+            \begin{itemize}
+                \item Add critical-path penalty for node selection?
+                \item Randomized adjustment? (BAR algorithm)
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+    Thanks for listening
+    
+    \scriptsize
+    Bandwidth-Aware Scheduling With SDN in Hadoop: A New Trend for Big Data;
+    Peng Qin, Bin Dai, Benxiong Huang, and Guan Xu;
+    IEEE Systems Journal, March 2014
+\end{frame}
+
+
+\end{document}
